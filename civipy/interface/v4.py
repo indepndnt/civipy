@@ -14,7 +14,9 @@ class V4Interface(BaseInterface):
 This is the v4 API interface."""
     )
 
-    def __call__(self, action: str, entity: str, params: CiviV4Request) -> CiviV4Response:
+    api_version = "4"
+
+    def execute(self, action: str, entity: str, params: CiviValue) -> CiviV4Response:
         if self.func is None:
             if SETTINGS.api_version != "4":
                 raise CiviProgrammingError(f"API version '{SETTINGS.api_version}' cannot use V4Interface")
@@ -81,12 +83,55 @@ This is the v4 API interface."""
         return data
 
     @staticmethod
-    def limit(value: int) -> CiviV4Request:
-        return {"limit": value}
+    def select(fields: list[str]) -> CiviV4Request:
+        return {"select": fields}
 
     @staticmethod
-    def where(kwargs: CiviValue) -> CiviV4Request:
-        return {"where": [[k, "=", v] for k, v in kwargs.items()]}
+    def sort(kwargs: CiviValue) -> CiviValue | CiviV4Request:
+        option = {}
+        for k, v in kwargs.items():
+            if isinstance(v, str) and v.upper() in ("ASC", "DESC"):
+                option[k] = v.upper()
+            elif isinstance(v, int) and v in (0, 1):
+                option[k] = ("DESC", "ASC")[v]
+            else:
+                raise CiviProgrammingError(f"Invalid sort value for {k}: {repr(v)}")
+        return {"orderBy": option}
+
+    @staticmethod
+    def limit(value: int, offset: int | None = None) -> CiviV4Request:
+        option = {"limit": value}
+        if offset is not None:
+            option["offset"] = offset
+        return option
+
+    operators = BaseInterface.operators | {
+        "contains": "CONTAINS",
+        "not_contains": "NOT CONTAINS",
+        "isempty": "IS EMPTY",
+        "regexp": "REGEXP",
+        "not_regexp": "NOT REGEXP",
+    }
+
+    @classmethod
+    def where(cls, kwargs: CiviValue) -> CiviV4Request:
+        option = []
+        for key, val in kwargs.items():
+            parts = key.split("__")
+            if len(parts) > 1 and parts[-1] in cls.operators:
+                *parts, op = parts
+                if op == "isnull":
+                    value = ["IS NULL"] if val else ["IS NOT NULL"]
+                elif op == "isempty":
+                    value = ["IS EMPTY"] if val else ["IS NOT EMPTY"]
+                elif (op.endswith("between") or op.endswith("in")) and not isinstance(val, list):
+                    raise CiviProgrammingError(f"Must provide a list for `in` or `between` operators.")
+                else:
+                    value = [cls.operators[op], val]
+            else:
+                value = ["=", val]
+            option.append([".".join(parts)] + value)
+        return {"where": option}
 
     @staticmethod
     def values(kwargs: CiviValue) -> CiviV4Request:

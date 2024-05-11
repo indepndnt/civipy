@@ -13,7 +13,9 @@ class V3Interface(BaseInterface):
 This is the v3 API interface."""
     )
 
-    def __call__(self, action: str, entity: str, params: CiviValue) -> CiviV3Response:
+    api_version = "3"
+
+    def execute(self, action: str, entity: str, params: CiviValue) -> CiviV3Response:
         if self.func is None:
             if SETTINGS.api_version != "3":
                 raise CiviProgrammingError(f"API version '{SETTINGS.api_version}' cannot use V3Interface")
@@ -25,11 +27,15 @@ This is the v3 API interface."""
                 self.func = self.run_cv_cli_process
             else:
                 raise CiviProgrammingError(f"API type '{SETTINGS.api_type}' not implemented")
+        # in v3, the 'update' action is deprecated and we are instructed to use 'create' with an id.
+        if action == "update" and "id" in params:
+            action = "create"
         return self.func(action, entity, params)
 
     def http_request(self, action: str, entity: str, kwargs: CiviValue) -> CiviV3Response:
         # v3 see https://docs.civicrm.org/dev/en/latest/api/v3/rest/
-        params = self._params(entity, action, kwargs)
+        kwargs = self._pre_process(kwargs)
+        params = self._http_params(entity, action, kwargs)
 
         # header for v3 API per https://docs.civicrm.org/dev/en/latest/api/v3/rest/#x-requested-with
         headers = {"X-Requested-With": "XMLHttpRequest"}
@@ -42,7 +48,7 @@ This is the v3 API interface."""
         return self.process_http_response(response)
 
     @staticmethod
-    def _params(entity: str, action: str, kwargs: CiviValue) -> CiviValue:
+    def _http_params(entity: str, action: str, kwargs: CiviValue) -> CiviValue:
         params = {
             "entity": entity,
             "action": action,
@@ -67,6 +73,7 @@ This is the v3 API interface."""
             raise CiviHTTPError(response)
 
     def run_cv_cli_process(self, action: str, entity: str, params: CiviValue) -> CiviV3Response:
+        params = self._pre_process(params)
         # cli.php -e entity -a action [-u user] [-s site] [--output|--json] [PARAMS]
         params = ["--%s=%s" % (k, v) for k, v in params.items()]
         process = subprocess.run(
@@ -75,6 +82,7 @@ This is the v3 API interface."""
         return self.process_json_response(json.loads(process.stdout.decode("UTF-8")))
 
     def run_drush_or_wp_process(self, action: str, entity: str, params: CiviValue) -> CiviV3Response:
+        params = self._pre_process(params)
         process = subprocess.run(
             [SETTINGS.rest_base, "civicrm-api", "--out=json", "--in=json", "%s.%s" % (entity, action)],
             capture_output=True,
@@ -83,17 +91,53 @@ This is the v3 API interface."""
         return self.process_json_response(json.loads(process.stdout.decode("UTF-8")))
 
     @staticmethod
+    def _pre_process(params: CiviValue) -> CiviValue:
+        if "options" in params:
+            params["options"] = json.dumps(params["options"], separators=(",", ":"))
+
+    @staticmethod
     def process_json_response(data: CiviV3Response) -> CiviV3Response:
         if "is_error" in data and data["is_error"] == 1:
             raise CiviAPIError(data)
         return data
 
     @staticmethod
-    def limit(value: int) -> CiviValue:
-        return {"options": '{"limit":' + str(value) + "}"}
+    def select(fields: list[str]) -> CiviValue:
+        return {"return": fields}
 
     @staticmethod
-    def where(kwargs: CiviValue) -> CiviValue:
+    def sort(kwargs: CiviValue) -> CiviValue:
+        option = []
+        for k, v in kwargs.items():
+            if isinstance(v, str) and v.upper() in ("ASC", "DESC"):
+                option.append(k if v.upper() == "ASC" else f"{k} DESC")
+            elif isinstance(v, int) and v in (0, 1):
+                option.append(k if v else f"{k} DESC")
+            else:
+                raise CiviProgrammingError(f"Invalid sort value for {k}: {repr(v)}")
+        return {"options": {"sort": option}}
+
+    @staticmethod
+    def limit(value: int, offset: int | None = None) -> CiviValue:
+        option = {"limit": value}
+        if offset is not None:
+            option["offset"] = offset
+        return {"options": option}
+
+    @classmethod
+    def where(cls, kwargs: CiviValue) -> CiviValue:
+        option = {}
+        for key, val in kwargs.items():
+            parts = key.split("__")
+            if len(parts) > 1 and parts[-1] in cls.operators:
+                *parts, op = parts
+                if op == "isnull":
+                    val = {"IS NULL": 1} if val else {"IS NOT NULL": 1}
+                elif (op.endswith("between") or op.endswith("in")) and not isinstance(val, list):
+                    raise CiviProgrammingError(f"Must provide a list for `in` or `between` operators.")
+                else:
+                    val = {cls.operators[op]: val}
+            option[".".join(parts)] = val
         return kwargs
 
     @staticmethod

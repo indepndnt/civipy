@@ -7,11 +7,11 @@ class CiviEntityFinancialTrxn(CiviCRMBase):
         return cls.action("cancel", **kwargs)
 
     @classmethod
-    def find_by_transaction_id(cls, trxn_id: str) -> "CiviFinancialTrxn | None":
+    def find_by_transaction_id(cls, trxn_id: str, entity_table: str) -> "CiviEntityFinancialTrxn | None":
         """Find a Contribution Payment by payment transaction ID"""
         kwargs = {
             "select": ["*", "financial_trxn_id.*"],
-            "entity_table": "civicrm_contribution",
+            "entity_table": entity_table,
             "financial_trxn_id.trxn_id": trxn_id,
         }
         found = cls.find_all(**kwargs)

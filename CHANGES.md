@@ -1,9 +1,15 @@
+### 0.1.0 [pending release]
+
+- Drop deprecated model methods
+
 ### 0.0.3 [pending release]
 
 - Add CiviCRM v4 API usage and make it the default
 - Drop allowing `CiviCRMBase` to be used directly (must subclass to access a CiviCRM entity)
 - Update settings to automatically search for a `.civipy` or `pyproject.toml` file
 - "Drop" Python 3.8 "support"
+- Implement Django-style `.objects` Manager on object models 
+- Deprecate model-level `find`, `get`, `create`, etc. methods
 
 ### 0.0.2 January 13, 2024
 

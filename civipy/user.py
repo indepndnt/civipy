@@ -15,7 +15,7 @@ class CiviUFJoin(CiviCRMBase):
 
 
 class CiviUFMatch(CiviCRMBase):
-    """This is the table that matches WordPress users to CiviCRM Contacts.
+    """This is the table that matches host system users to CiviCRM Contacts.
 
     create requires uf_id, uf_name, and contact_id
 
@@ -28,7 +28,7 @@ class CiviUFMatch(CiviCRMBase):
     """
 
     @classmethod
-    def find_wp(cls, contact_ids):
+    def find_system_users(cls, contact_ids: list[int]) -> list["CiviUFMatch"]:
         result = []
         for contact_id in set(contact_ids):
             found = cls.find(contact_id=contact_id)
@@ -45,10 +45,12 @@ class CiviUFMatch(CiviCRMBase):
             result.civi[attr] = int(result.civi[attr])
         return result
 
-    def update_wp_user(self, wp_user_id):
-        payload = self.civi
-        payload["uf_id"] = wp_user_id
-        self.update(**payload)
+    def update_system_user(self, user_id: int):
+        return self.update(**self.civi, uf_id=user_id)
+
+    @classmethod
+    def connect(cls, host_user: int, contact_id: int, domain_id: int = 1):
+        return cls.objects.create(domain_id=domain_id, uf_id=host_user, contact_id=contact_id)
 
 
 class CiviUser(CiviCRMBase):

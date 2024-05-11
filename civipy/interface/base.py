@@ -1,4 +1,5 @@
 from typing import TypedDict, Literal, Callable
+from warnings import warn
 
 CiviValue = dict[str, int | str]
 CiviV3Request = CiviValue
@@ -60,14 +61,47 @@ class BaseInterface:
     The `values` method is a helper function to generate parameters for create/update.
     """
 
+    api_version: str = ""
+
     def __init__(self):
         self.func: Callable[[str, str, CiviValue], CiviResponse] | None = None
 
     def __call__(self, action: str, entity: str, params: CiviValue) -> CiviResponse:
+        warn(
+            "interface.__call__ will be removed in v0.1.0, use interface.execute instead",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.execute(action, entity, params)
+
+    def execute(self, action: str, entity: str, params: CiviValue) -> CiviResponse:
+        raise NotImplementedError
+
+    operators = {
+        "lte": "<=",
+        "gte": ">=",
+        "lt": "<",
+        "gt": ">",
+        "ne": "!=",
+        "like": "LIKE",
+        "not_like": "NOT LIKE",
+        "in": "IN",
+        "not_in": "NOT IN",
+        "between": "BETWEEN",
+        "not_between": "NOT BETWEEN",
+        "isnull": "IS NULL",
+    }
+
+    @staticmethod
+    def select(fields: list[str]) -> CiviValue | CiviV4Request:
         raise NotImplementedError
 
     @staticmethod
-    def limit(value: int) -> CiviValue | CiviV4Request:
+    def sort(kwargs: CiviValue) -> CiviValue | CiviV4Request:
+        raise NotImplementedError
+
+    @staticmethod
+    def limit(value: int, offset: int | None = None) -> CiviValue | CiviV4Request:
         raise NotImplementedError
 
     @staticmethod
