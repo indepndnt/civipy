@@ -2,16 +2,13 @@ from civipy.base.base import CiviCRMBase
 from civipy.exceptions import NoResultError, NonUniqueResultError
 
 
-class CiviUFField(CiviCRMBase):
-    ...
+class CiviUFField(CiviCRMBase): ...
 
 
-class CiviUFGroup(CiviCRMBase):
-    ...
+class CiviUFGroup(CiviCRMBase): ...
 
 
-class CiviUFJoin(CiviCRMBase):
-    ...
+class CiviUFJoin(CiviCRMBase): ...
 
 
 class CiviUFMatch(CiviCRMBase):
@@ -53,5 +50,4 @@ class CiviUFMatch(CiviCRMBase):
         return cls.objects.create(domain_id=domain_id, uf_id=host_user, contact_id=contact_id)
 
 
-class CiviUser(CiviCRMBase):
-    ...
+class CiviUser(CiviCRMBase): ...

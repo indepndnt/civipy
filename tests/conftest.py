@@ -14,7 +14,7 @@ def mock_civi_rest_api(monkeypatch):
         api_version="3",
         log_level="INFO",
     )
-    monkeypatch.setattr("urllib3.request", mocked_request)
+    monkeypatch.setattr("urllib3.PoolManager.request", mocked_request)
 
 
 def mocked_request(*args, fields: dict[str, str], **kwargs):

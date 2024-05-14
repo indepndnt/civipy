@@ -67,7 +67,7 @@ class CiviRelationship(CiviCRMBase):
         return query
 
     @classmethod
-    def create_or_increment_relationship(
+    def create_or_increment_relationship(  # noqa PLR0913 (too many args)
         cls,
         contact_id_a: int,
         contact_id_b: int,

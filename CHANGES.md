@@ -2,7 +2,7 @@
 
 - Drop deprecated model methods
 
-### 0.0.3 [pending release]
+### 0.0.3 May 14, 2024
 
 - Add CiviCRM v4 API usage and make it the default
 - Drop allowing `CiviCRMBase` to be used directly (must subclass to access a CiviCRM entity)

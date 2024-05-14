@@ -1,5 +1,6 @@
 from typing import TypedDict, Literal, Callable
 from warnings import warn
+import urllib3
 
 CiviValue = dict[str, int | str]
 CiviV3Request = CiviValue
@@ -65,12 +66,17 @@ class BaseInterface:
 
     def __init__(self):
         self.func: Callable[[str, str, CiviValue], CiviResponse] | None = None
+        self.http: urllib3.PoolManager | None = None
+
+    def _configure_http_connection(self) -> None:
+        timeout = urllib3.util.Timeout(connect=10.0, read=30.0)
+        self.http = urllib3.PoolManager(timeout=timeout)
 
     def __call__(self, action: str, entity: str, params: CiviValue) -> CiviResponse:
         warn(
             "interface.__call__ will be removed in v0.1.0, use interface.execute instead",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return self.execute(action, entity, params)
 
@@ -94,6 +100,10 @@ class BaseInterface:
 
     @staticmethod
     def select(fields: list[str]) -> CiviValue | CiviV4Request:
+        raise NotImplementedError
+
+    @staticmethod
+    def join(tables: list[tuple[str, str, str]]) -> CiviValue | CiviV4Request:
         raise NotImplementedError
 
     @staticmethod

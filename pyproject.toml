@@ -62,8 +62,10 @@ norecursedirs = ["__pycache__", "*.egg-info", ".*", "dist"]
 
 [tool.ruff]
 src = ["src"]
-select = ["E", "F", "PL"]
 line-length = 120
 target-version = "py310"
 extend-exclude = ["react"]
+
+[tool.ruff.lint]
+select = ["E", "F", "PL"]
 ignore = ["PLR2004"]

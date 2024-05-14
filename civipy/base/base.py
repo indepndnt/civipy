@@ -102,7 +102,11 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
 
         Returns an object of class cls populated with this object's data if found, otherwise
         returns None."""
-        warn("model.find_and_update will be removed in v0.1.0, use model.objects methods", DeprecationWarning, stacklevel=2)
+        warn(
+            "model.find_and_update will be removed in v0.1.0, use model.objects methods",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         query = cls.objects._interface().where(where)
         response = cls.get(**query)
         if response["count"] == 0:
@@ -128,16 +132,20 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
 
         Returns an object of class cls populated with the found, updated, or created
         object's data."""
-        warn("model.find_or_create will be removed in v0.1.0, use model.objects methods", DeprecationWarning, stacklevel=2)
+        warn(
+            "model.find_or_create will be removed in v0.1.0, use model.objects methods",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if do_update:
             obj = cls.find_and_update(where, **kwargs)
         else:
-            obj = cls.find(**kwargs)
+            obj = cls.find(**where)
 
         if obj is None:
             query = where.copy()
             query.update(kwargs)
-            return cls.create(**query)
+            return cls.objects.create(**query)
         return obj
 
     @classmethod
@@ -171,9 +179,9 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
     def __getattr__(self: CiviEntity, key: str):
         if key in self.civi:
             return self.civi[key]
-        elif key.startswith("civi_"):
+        elif key.startswith("civi_") and key[5:] in self.civi:
             return self.civi[key[5:]]
-        return object.__getattribute__(self, key)
+        return None
 
     def __setattr__(self: CiviEntity, key: str, value: str | int | None) -> None:
         if key == "civi":

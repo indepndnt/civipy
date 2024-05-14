@@ -9,7 +9,7 @@ def process_command() -> None:
     file = Path(argv[0]).with_name("VERSION")
     level: int | None = None
     for cmd in argv[1:]:
-        cmd = cmd.lower().lstrip("-")
+        cmd = cmd.lower().lstrip("-")  # noqa PLW2901 (loop var)
         if cmd == "major":
             level = 0
             continue
@@ -69,11 +69,11 @@ def release(tag: str) -> None:
     """Create a release with the version `tag`."""
     root = Path(argv[0]).parent
     # commit change to version number
-    run(["git", "add", "VERSION"], cwd=root)
-    run(["git", "commit", "-m", f"release {tag}"], cwd=root)
+    run(["git", "add", "VERSION"], cwd=root, check=True)
+    run(["git", "commit", "-m", f"release {tag}"], cwd=root, check=True)
     # tag and push to GitHub for GitHub Actions to publish
-    run(["git", "tag", tag], cwd=root)
-    run(["git", "push", "origin", tag], cwd=root)
+    run(["git", "tag", tag], cwd=root, check=True)
+    run(["git", "push", "origin", tag], cwd=root, check=True)
 
 
 if __name__ == "__main__":

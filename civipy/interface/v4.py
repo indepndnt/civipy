@@ -22,6 +22,7 @@ This is the v4 API interface."""
                 raise CiviProgrammingError(f"API version '{SETTINGS.api_version}' cannot use V4Interface")
             if SETTINGS.api_type == "http":
                 self.func = self.http_request
+                self._configure_http_connection()
             elif SETTINGS.api_type == "drush":
                 self.func = self.run_drush_process
             # API v4 not available to wp-cli - see https://docs.civicrm.org/dev/en/latest/api/v4/usage/#wp-cli
@@ -34,8 +35,9 @@ This is the v4 API interface."""
     def http_request(self, action: str, entity: str, kwargs: CiviV4Request) -> CiviV4Response:
         # v4 see https://docs.civicrm.org/dev/en/latest/api/v4/rest/
         url = urljoin(SETTINGS.rest_base, "/".join((entity, action)))
-        body = urlencode({"params": json.dumps(kwargs, separators=(",", ":"))})
-        logger.debug("Request for %s: %s", url, body)
+        params = json.dumps(kwargs, separators=(",", ":"))
+        body = urlencode({"params": params})
+        logger.debug("Request for %s: %s", url, params)
 
         # header for v4 API per https://docs.civicrm.org/dev/en/latest/api/v4/rest/#x-requested-with
         headers = {
@@ -45,7 +47,7 @@ This is the v4 API interface."""
         }
 
         # v4 docs: "Requests are typically submitted with HTTP POST, but read-only operations may use HTTP GET."
-        response = urllib3.request("POST", url, body=body, headers=headers)
+        response = self.http.request("POST", url, body=body, headers=headers)
         return self.process_http_response(response)
 
     def process_http_response(self, response: urllib3.BaseHTTPResponse) -> CiviV4Response:
@@ -65,6 +67,7 @@ This is the v4 API interface."""
                 json.dumps(params, separators=(",", ":")).encode("UTF-8"),
             ],
             capture_output=True,
+            check=True,
         )
         return self.process_json_response(json.loads(process.stdout.decode("UTF-8")))
 
@@ -72,6 +75,7 @@ This is the v4 API interface."""
         process = subprocess.run(
             [SETTINGS.rest_base, "civicrm-api", "version=4", "--out=json", "--in=json", "%s.%s" % (entity, action)],
             capture_output=True,
+            check=True,
             input=json.dumps(params, separators=(",", ":")).encode("UTF-8"),
         )
         return self.process_json_response(json.loads(process.stdout.decode("UTF-8")))
@@ -85,6 +89,13 @@ This is the v4 API interface."""
     @staticmethod
     def select(fields: list[str]) -> CiviV4Request:
         return {"select": fields}
+
+    @staticmethod
+    def join(tables: dict[str, tuple[str, str]]) -> CiviV4Request:
+        option = []
+        for foreign_key, (name, table) in tables.items():
+            option.append([f"{name} AS {table}", "LEFT", [foreign_key, "=", f"{table}.id"]])
+        return {"join": option}
 
     @staticmethod
     def sort(kwargs: CiviValue) -> CiviValue | CiviV4Request:
@@ -125,7 +136,7 @@ This is the v4 API interface."""
                 elif op == "isempty":
                     value = ["IS EMPTY"] if val else ["IS NOT EMPTY"]
                 elif (op.endswith("between") or op.endswith("in")) and not isinstance(val, list):
-                    raise CiviProgrammingError(f"Must provide a list for `in` or `between` operators.")
+                    raise CiviProgrammingError(f"Must provide a list for `{op}` operator.")
                 else:
                     value = [cls.operators[op], val]
             else:

@@ -2,11 +2,10 @@ from civipy import CiviContact
 
 
 def test_get_with_existing():
-    contact_info = CiviContact.action("get", email="validunique@example.com")
+    contact_info = CiviContact.objects.filter(email="validunique@example.com").all()
 
-    assert isinstance(contact_info, dict)
-    assert contact_info["count"] == 1
-    assert len(contact_info["values"]) == 1
+    assert len(contact_info) == 1
+    assert isinstance(contact_info[0], CiviContact)
 
 
 def test_get_no_match():

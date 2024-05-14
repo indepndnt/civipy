@@ -15,6 +15,7 @@ class BaseQuery:
             self._entity = model.__name__[4:] if model.__name__[:4] == "Civi" else model.__name__
         self._select = None
         self._filter = None
+        self._join = None
         self._limit = None
         self._order = None
         self._result_cache: list | None = None
@@ -59,7 +60,7 @@ class BaseQuery:
         start, stop, step = [None if v is None else int(v) for v in (k.start, k.stop, k.step)]
         query._limit = {} if start is None else {"offset": start}
         query._limit["limit"] = stop - query._limit.get("offset", 0)
-        return list(query)[:: step] if step else query
+        return list(query)[::step] if step else query
 
     _interface_reference: Interface | None = None
 
@@ -74,8 +75,9 @@ class BaseQuery:
     def _chain(self):
         query = self.__class__(model=self.model)
         query._select = self._select
-        query._limit = self._limit
         query._filter = self._filter
+        query._join = self._join
+        query._limit = self._limit
         query._order = self._order
         return query
 
@@ -85,6 +87,8 @@ class BaseQuery:
         params = {}
         if self._select is not None:
             self._deep_update(params, interface.select(self._select))
+        if self._join is not None:
+            self._deep_update(params, interface.join(self._join))
         if self._filter is not None:
             where = interface.where(self._filter)
             if hasattr(self.model, "query_filter_hook"):
@@ -131,7 +135,22 @@ class Query(BaseQuery):
 
     def values(self, *args):
         query = self._chain()
-        query._select = args
+        query._select = []
+        for field in args:
+            foreign_key, _, join_field = field.partition(".")
+            if not join_field:
+                query._select.append(field)
+                continue
+            if query._join is None:
+                query._join = {}
+            if foreign_key not in query._join:
+                table = foreign_key[:-3]
+                if table == "entity":
+                    name, table = self.model._implicit_join
+                else:
+                    name = table.title()
+                query._join[foreign_key] = (name, table)
+            query._select.append(".".join((query._join[foreign_key][1], join_field)))
         return query
 
     def order_by(self, **kwargs):

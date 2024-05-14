@@ -21,6 +21,7 @@ This is the v3 API interface."""
                 raise CiviProgrammingError(f"API version '{SETTINGS.api_version}' cannot use V3Interface")
             if SETTINGS.api_type == "http":
                 self.func = self.http_request
+                self._configure_http_connection()
             elif SETTINGS.api_type in ("drush", "wp"):
                 self.func = self.run_drush_or_wp_process
             elif SETTINGS.api_type == "cvcli":
@@ -44,7 +45,7 @@ This is the v3 API interface."""
         method = "GET" if action.startswith("get") else "POST"
         # urllib3 uses the `fields` parameter to compose the query string for GET requests,
         # and uses the same parameter to compose form data for POST requests
-        response = urllib3.request(method, SETTINGS.rest_base, fields=params, headers=headers)
+        response = self.http.request(method, SETTINGS.rest_base, fields=params, headers=headers)
         return self.process_http_response(response)
 
     @staticmethod
@@ -77,7 +78,7 @@ This is the v3 API interface."""
         # cli.php -e entity -a action [-u user] [-s site] [--output|--json] [PARAMS]
         params = ["--%s=%s" % (k, v) for k, v in params.items()]
         process = subprocess.run(
-            [SETTINGS.rest_base, "-e", entity, "-a", action, "--json"] + params, capture_output=True
+            [SETTINGS.rest_base, "-e", entity, "-a", action, "--json"] + params, capture_output=True, check=True
         )
         return self.process_json_response(json.loads(process.stdout.decode("UTF-8")))
 
@@ -86,6 +87,7 @@ This is the v3 API interface."""
         process = subprocess.run(
             [SETTINGS.rest_base, "civicrm-api", "--out=json", "--in=json", "%s.%s" % (entity, action)],
             capture_output=True,
+            check=True,
             input=json.dumps(params).encode("UTF-8"),
         )
         return self.process_json_response(json.loads(process.stdout.decode("UTF-8")))
@@ -94,6 +96,7 @@ This is the v3 API interface."""
     def _pre_process(params: CiviValue) -> CiviValue:
         if "options" in params:
             params["options"] = json.dumps(params["options"], separators=(",", ":"))
+        return params
 
     @staticmethod
     def process_json_response(data: CiviV3Response) -> CiviV3Response:
@@ -104,6 +107,10 @@ This is the v3 API interface."""
     @staticmethod
     def select(fields: list[str]) -> CiviValue:
         return {"return": fields}
+
+    @staticmethod
+    def join(tables: list[tuple[str, str, str]]) -> CiviValue:
+        raise NotImplementedError
 
     @staticmethod
     def sort(kwargs: CiviValue) -> CiviValue:
@@ -132,11 +139,11 @@ This is the v3 API interface."""
             if len(parts) > 1 and parts[-1] in cls.operators:
                 *parts, op = parts
                 if op == "isnull":
-                    val = {"IS NULL": 1} if val else {"IS NOT NULL": 1}
+                    val = {"IS NULL": 1} if val else {"IS NOT NULL": 1}  # noqa PLW2901 (loop var)
                 elif (op.endswith("between") or op.endswith("in")) and not isinstance(val, list):
-                    raise CiviProgrammingError(f"Must provide a list for `in` or `between` operators.")
+                    raise CiviProgrammingError(f"Must provide a list for `{op}` operator.")
                 else:
-                    val = {cls.operators[op]: val}
+                    val = {cls.operators[op]: val}  # noqa PLW2901 (loop var)
             option[".".join(parts)] = val
         return kwargs
 

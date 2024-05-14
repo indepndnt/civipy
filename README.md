@@ -8,7 +8,7 @@ older than 3.11 and want to use `pyproject.toml` configuration, install with
 ## Configuration
 
 Configure your credentials in environment variables, a `.civipy` file, or in
-`pyproject.toml` in a `tools.civipy` section. By default CiviPy will read a `.civipy`
+`pyproject.toml` in a `tools.civipy` section. By default, CiviPy will read a `.civipy`
 file anywhere in the current working directory up to your project root, or your
 project's `pyproject.toml` file, or a `.civipy` file in the user's home folder.
 Settings in environment variables will overwrite any file settings. Alternatively,
@@ -44,15 +44,16 @@ You can specify in an environment variable either a directory to find a `.civipy
 configuration file in, or a file to read as a `.civipy` configuration file.
 
 ## Usage
-There are class methods for retrieving and creating records and instance methods
-for working with them.
+There is a Django-style `.objects` attribute on each record model with `filter`, `values`,
+`order_by`, and `all` methods for querying; and `create`, `delete`, and `update` methods
+for making changes. Model instances also have `save` and `delete` methods.
 
 ```python
-from civipy import CiviContact, CiviEmail
+from civipy import CiviContact
 
-contact = CiviContact.find_by_email("ana@ananelson.com")
-email = CiviEmail.find_or_create(where={"contact_id": contact.id, "email": "ana@ananelson.com"})
-contact.update(nick_name="Ana")
+contact = CiviContact.objects.filter(email_primary__email="ana@ananelson.com")[0]
+contact.nick_name = "Ana"
+contact.save()
 ```
 
 Each CiviCRM Entity is represented by a subclass of CiviCRMBase; if you need an entity
@@ -65,9 +66,6 @@ import civipy
 class CiviNewEntity(civipy.CiviCRMBase):
     pass
 ```
-
-Many CiviCRM Actions have a corresponding method (e.g. `get`, `create`), and there are
-also a number of convenience methods which do more processing (e.g. `find_or_create`).
 
 ## Copyright & License
 civipy Copyright &copy; 2020 Ana Nelson
