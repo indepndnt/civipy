@@ -5,7 +5,7 @@ on:
     branches:
       - 'main'
     tags:
-      - '*'
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: read
@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up latest Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "*"
 
@@ -31,7 +31,7 @@ jobs:
         run: python -m build
 
       - name: Upload sdist as workflow artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: dist/
 
@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Download workflow artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: artifact
           path: dist

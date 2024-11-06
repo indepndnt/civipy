@@ -12,14 +12,18 @@ class CiviContact(CiviNotable):
 
     @classmethod
     def find_by_email(cls, email_address: str, select: list[str] | None = None):
-        email_obj = CiviEmail.find(select=["contact_id"], email=email_address)
-        return cls.find(select=select, id=email_obj.civi["contact_id"])
+        if select is None:
+            select = []
+        email_obj = CiviEmail.objects.filter(email=email_address).values("contact_id")[0]
+        return cls.objects.filter(id=email_obj.civi["contact_id"]).values(*select)[0]
 
     @classmethod
     def find_all_by_email(cls, email_address: str, select: list[str] | None = None):
+        if select is None:
+            select = []
         return [
-            cls.find(select=select, id=email_obj.civi["contact_id"])
-            for email_obj in CiviEmail.find_all(select=["contact_id"], email=email_address)
+            cls.objects.filter(id=email_obj.civi["contact_id"]).values(*select)[0]
+            for email_obj in CiviEmail.objects.filter(email=email_address).values("contact_id").all()
         ]
 
     @classmethod

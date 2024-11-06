@@ -2,6 +2,12 @@
 
 - Drop deprecated model methods
 
+### 0.0.4 November 6, 2024
+
+- Fix build bug introduced in 0.0.3
+- Update Contact find methods
+- Add `get` and `save` methods to Query
+
 ### 0.0.3 May 14, 2024
 
 - Add CiviCRM v4 API usage and make it the default

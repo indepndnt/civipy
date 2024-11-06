@@ -9,10 +9,19 @@ class CiviEntityFinancialTrxn(CiviCRMBase):
     @classmethod
     def find_by_transaction_id(cls, trxn_id: str, entity_table: str) -> "CiviEntityFinancialTrxn | None":
         """Find a Contribution Payment by payment transaction ID"""
-        kwargs = {
-            "select": ["*", "financial_trxn_id.*"],
-            "entity_table": entity_table,
-            "financial_trxn_id.trxn_id": trxn_id,
-        }
-        found = cls.find_all(**kwargs)
+        found = cls.objects.filter(
+            entity_table=entity_table, financial_trxn_id__trxn_id=trxn_id
+        ).select(["*", "financial_trxn_id.*"]).all()
         return next(filter(lambda c: bool(c.civi.get("entity_id")), found), None)
+
+
+class CiviFinancialTrxn(CiviCRMBase):
+    ...
+
+
+class CiviFinancialItem(CiviCRMBase):
+    ...
+
+
+class CiviLineItem(CiviCRMBase):
+    ...

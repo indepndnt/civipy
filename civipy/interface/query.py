@@ -125,6 +125,9 @@ class Query(BaseQuery):
         self._fetch_all()
         return self._result_cache
 
+    def get(self, **kwargs):
+        return self.filter(**kwargs)[0]
+
     def filter(self, **kwargs):
         query = self._chain()
         if query._filter:
@@ -161,6 +164,15 @@ class Query(BaseQuery):
     def create(self, **kwargs):
         query = self._interface().values(kwargs)
         response = self._interface().execute("create", self._entity, query)
+        return response
+
+    def save(self, records: list[dict[str, str]], defaults: dict[str, str] | None = None, match: list[str] | None = None):
+        query = {"records": records}
+        if defaults is not None:
+            query["defaults"] = defaults
+        if match is not None:
+            query["match"] = match
+        response = self._interface().execute("save", self._entity, query)
         return response
 
     def delete(self):

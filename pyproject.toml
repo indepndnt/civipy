@@ -35,7 +35,7 @@ optional-dependencies.dev = [
 ]
 
 [tool.setuptools]
-packages = ["civipy"]
+packages = {find = {include = ["civipy*"]}}
 dynamic.version = {file = "VERSION"}
 
 [tool.cibuildwheel]
