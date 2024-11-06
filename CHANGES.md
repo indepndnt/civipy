@@ -2,6 +2,10 @@
 
 - Drop deprecated model methods
 
+### 0.0.5 November 6, 2024
+
+- Fix release script
+
 ### 0.0.4 November 6, 2024
 
 - Fix build bug introduced in 0.0.3
