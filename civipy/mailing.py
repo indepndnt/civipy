@@ -17,7 +17,7 @@ class CiviMailingEventQueue(CiviCRMBase):
     def find_recipients(cls, contact_ids: list[int]) -> "CiviMailingEventQueue | None":
         result = []
         for contact_id in set(contact_ids):
-            found = cls.find_all(contact_id=contact_id)
+            found = cls.objects.filter(contact_id=contact_id).all()
             if not found:
                 continue
             result.append(found[0])

@@ -45,9 +45,12 @@ This is the v4 API interface."""
             "X-Civi-Auth": f"Bearer {SETTINGS.user_key}",
             "Content-Type": "application/x-www-form-urlencoded",
         }
+        kw = {"body": body, "headers": headers}
+        if action == "create":
+            kw["retry"] = self.create_retry
 
         # v4 docs: "Requests are typically submitted with HTTP POST, but read-only operations may use HTTP GET."
-        response = self.http.request("POST", url, body=body, headers=headers)
+        response = self.http.request("POST", url, **kw)
         return self.process_http_response(response)
 
     def process_http_response(self, response: urllib3.BaseHTTPResponse) -> CiviV4Response:

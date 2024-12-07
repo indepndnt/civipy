@@ -67,10 +67,17 @@ class BaseInterface:
     def __init__(self):
         self.func: Callable[[str, str, CiviValue], CiviResponse] | None = None
         self.http: urllib3.PoolManager | None = None
+        self.create_retry: urllib3.util.Retry | None = None
 
     def _configure_http_connection(self) -> None:
         timeout = urllib3.util.Timeout(connect=10.0, read=30.0)
-        self.http = urllib3.PoolManager(timeout=timeout)
+        # retry on all methods, because many non-create requests are made with POST
+        retry = urllib3.util.Retry(total=6, backoff_factor=3, backoff_jitter=2, allowed_methods=None)
+        self.http = urllib3.PoolManager(timeout=timeout, retry=retry)
+        # a retry object to override on Create POST requests
+        self.create_retry = urllib3.util.Retry(
+            connect=6, read=0, status=3, other=0, backoff_factor=3, backoff_jitter=2, allowed_methods={"POST"}
+        )
 
     def __call__(self, action: str, entity: str, params: CiviValue) -> CiviResponse:
         warn(

@@ -4,7 +4,7 @@ from civipy.base.base import CiviCRMBase
 class CiviEntityFinancialTrxn(CiviCRMBase):
     @classmethod
     def cancel(cls, **kwargs):
-        return cls.action("cancel", **kwargs)
+        return cls.objects._interface().execute("cancel", "EntityFinancialTrxn", kwargs)
 
     @classmethod
     def find_by_transaction_id(cls, trxn_id: str, entity_table: str) -> "CiviEntityFinancialTrxn | None":

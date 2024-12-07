@@ -49,7 +49,6 @@ class Settings:
     @property
     def api_type(self) -> str:
         if self._api_type is None:
-            self._read_config()
             # determine value for api_type
             base = self.rest_base.lower()
             if "http" in base:

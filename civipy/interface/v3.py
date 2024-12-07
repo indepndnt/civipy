@@ -35,17 +35,22 @@ This is the v3 API interface."""
 
     def http_request(self, action: str, entity: str, kwargs: CiviValue) -> CiviV3Response:
         # v3 see https://docs.civicrm.org/dev/en/latest/api/v3/rest/
+        url = SETTINGS.rest_base
         kwargs = self._pre_process(kwargs)
         params = self._http_params(entity, action, kwargs)
+        logger.debug("Request for %s: %s", url, params)
 
         # header for v3 API per https://docs.civicrm.org/dev/en/latest/api/v3/rest/#x-requested-with
         headers = {"X-Requested-With": "XMLHttpRequest"}
+        # urllib3 uses the `fields` parameter to compose the query string for GET requests,
+        # and uses the same parameter to compose form data for POST requests
+        kw = {"fields": params, "headers": headers}
+        if action.startswith("create"):
+            kw["retry"] = self.create_retry
 
         # v3 API GET actions apparently all start with "get"; POST actions are create, delete, etc.
         method = "GET" if action.startswith("get") else "POST"
-        # urllib3 uses the `fields` parameter to compose the query string for GET requests,
-        # and uses the same parameter to compose form data for POST requests
-        response = self.http.request(method, SETTINGS.rest_base, fields=params, headers=headers)
+        response = self.http.request(method, url, **kw)
         return self.process_http_response(response)
 
     @staticmethod

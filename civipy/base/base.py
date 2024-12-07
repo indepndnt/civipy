@@ -1,8 +1,6 @@
 import json
 from typing import TypeVar
 from warnings import warn
-from civipy.base.config import logger
-from civipy.base.utils import get_unique
 from civipy.exceptions import CiviProgrammingError
 from civipy.interface import CiviValue, CiviResponse
 from civipy.interface.query import Query
@@ -32,34 +30,39 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
     def create(cls, **kwargs: CiviValue) -> CiviEntity:
         """Make an API request with the "create" action and return an object of class cls
         populated with the created object's data."""
-        warn("model.create will be removed in v0.1.0, use model.save", DeprecationWarning, stacklevel=2)
-        query = cls.objects._interface().values(kwargs)
-        response = cls.action("create", **query)
-        logger.debug("new record created! full response: %s" % str(response))
-        return cls(get_unique(response))
+        warn(
+            "model.create will be removed in v0.1.0, use model.objects.create\n"
+            "    e.g. `CiviModel.create(**kw)` -> `CiviModel.objects.create(**kw)`",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.objects.create(**kwargs)
 
     def update(self: CiviEntity, **kwargs: CiviValue) -> CiviResponse:
         """Update the current object with the values specified in kwargs. Returns the full
         API response."""
-        warn("model.update will be removed in v0.1.0, use model.save", DeprecationWarning, stacklevel=2)
-        kwargs["id"] = self.civi_id
-        query = self.objects._interface().values(kwargs)
-        return self.action("update", **query)
+        warn(
+            "instance.update will be removed in v0.1.0, use instance.objects.update\n"
+            "    e.g. `entity.update(**kw)` -> `entity.objects.update(**kw)",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.objects.update(**kwargs)
 
     def save(self: CiviEntity) -> CiviEntity:
         """Save the current instance."""
-        action = "create" if self.civi_id is None else "update"
-        query = self.objects._interface().values(self.civi)
-        response = self.action(action, **query)
-        return self.__class__(get_unique(response))
+        if self.civi_id is None:
+            return self.objects.create(**self.civi)
+        return self.objects.update(**self.civi)
 
     def delete(self: CiviEntity, check_permissions: bool = True, use_trash: bool = True) -> CiviResponse:
-        query = self.objects._interface().where({"id": self.civi_id})
+        interface = self.objects._interface()
+        query = interface.where({"id": self.civi_id})
         if check_permissions is False:
             query["checkPermissions"] = False
         if use_trash is False:
             query["useTrash"] = False
-        return self.action("delete", **query)
+        return interface.execute("delete", self.objects._entity, **query)
 
     @classmethod
     def find(cls, select: list[str] | None = None, **kwargs: CiviValue) -> CiviEntity | None:
@@ -69,14 +72,14 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
 
         Returns an object of class cls populated with this object's data if found, otherwise
         returns None."""
-        warn("model.find will be removed in v0.1.0, use model.objects methods", DeprecationWarning, stacklevel=2)
-        query = cls.objects._interface().where(kwargs)
-        if select:
-            query["select"] = select
-        response = cls.get(**query)
-        if response["count"] == 0:
-            return None
-        return cls(get_unique(response))
+        warn(
+            "model.find will be removed in v0.1.0, use model.objects methods\n"
+            "    e.g. `CiviModel.find(select, **kw)` -> `CiviModel.objects.values(*select).get(**kw)`",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        query = cls.objects.values(*select) if select else cls.objects
+        return query.get(**kwargs)
 
     @classmethod
     def find_all(cls, select: list[str] | None = None, **kwargs: CiviValue) -> list[CiviEntity]:
@@ -86,12 +89,16 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
 
         Returns a list of objects of class cls populated with data. Returns an empty list
         if no matching values found."""
-        warn("model.find_all will be removed in v0.1.0, use model.objects methods", DeprecationWarning, stacklevel=2)
-        query = cls.objects._interface().where(kwargs)
+        warn(
+            "model.find_all will be removed in v0.1.0, use model.objects methods\n"
+            "    e.g. `CiviModel.find_all(select, **kw)` -> `model.objects.values(*select).filter(**kw).all()`",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        query = cls.objects.filter(**kwargs)
         if select:
-            query["select"] = select
-        response = cls.action("get", **query)
-        return [cls(v) for v in response["values"]]
+            query = query.values(*select)
+        return query.all()
 
     @classmethod
     def find_and_update(cls, where: CiviValue, **kwargs: CiviValue) -> CiviEntity | None:
@@ -103,22 +110,17 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
         Returns an object of class cls populated with this object's data if found, otherwise
         returns None."""
         warn(
-            "model.find_and_update will be removed in v0.1.0, use model.objects methods",
+            "model.find_and_update will be removed in v0.1.0, use model.objects methods\n"
+            "    e.g. `CiviModel.find_and_update(criteria, **kw)`\n"
+            "        -> `entity = CiviModel.objects.get(**criteria)\n"
+            "            entity.objects.update(**kw)`",
             DeprecationWarning,
             stacklevel=2,
         )
-        query = cls.objects._interface().where(where)
-        response = cls.get(**query)
-        if response["count"] == 0:
+        obj = cls.objects.get(**where)
+        if not obj:
             return None
-
-        value = get_unique(response)
-        value.update(kwargs)
-        new_response = cls.action("create", **value)
-        updated_value = get_unique(new_response)
-        # not all fields are included in the return from an update, so we merge both sources
-        updated_value.update(value)
-        return cls(updated_value)
+        return obj.objects.update(kwargs)
 
     @classmethod
     def find_or_create(cls, where: CiviValue, do_update: bool = False, **kwargs: CiviValue) -> CiviEntity:
@@ -133,19 +135,23 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
         Returns an object of class cls populated with the found, updated, or created
         object's data."""
         warn(
-            "model.find_or_create will be removed in v0.1.0, use model.objects methods",
+            "model.find_or_create will be removed in v0.1.0, use model.objects methods\n"
+            "    e.g. `CiviModel.find_or_create(**kw)`\n"
+            "        -> `entity = CiviModel.objects.get(**kw)\n"
+            "            if entity is None:\n"
+            "                entity.objects.create(**where | kwargs)`",
             DeprecationWarning,
             stacklevel=2,
         )
-        if do_update:
-            obj = cls.find_and_update(where, **kwargs)
-        else:
-            obj = cls.find(**where)
+        obj = cls.objects.get(**where)
 
         if obj is None:
             query = where.copy()
             query.update(kwargs)
             return cls.objects.create(**query)
+        if do_update:
+            obj.civi.update(kwargs)
+            obj.save()
         return obj
 
     @classmethod
@@ -167,14 +173,8 @@ class CiviCRMBase(metaclass=MetaCiviCRM):
     REPR_FIELDS = ["display_name", "name"]
 
     def __repr__(self: CiviEntity):
-        label = None
-
-        for field_name in self.REPR_FIELDS:
-            if field_name in self.civi:
-                label = self.civi[field_name]
-                break
-
-        return f"<{self.__class__.__name__} {self.civi_id}: {label}>"
+        detail = " ".join(f'{k}={v!r}' for k, v in ((k, self.civi.get(k)) for k in self.REPR_FIELDS) if v is not None)
+        return f"<{self.__class__.__name__} {self.civi_id} {detail}>"
 
     def __getattr__(self: CiviEntity, key: str):
         if key in self.civi:

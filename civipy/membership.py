@@ -13,7 +13,7 @@ class CiviMembershipPayment(CiviCRMBase):
 class CiviMembership(CiviCRMBase):
     def payments(self):
         """Find all MembershipPayment records associated with this Membership."""
-        return CiviMembershipPayment.find_all(membership_id=self.id)
+        return CiviMembershipPayment.objects.filter(membership_id=self.id).all()
 
     def apply_contribution(self, contribution: CiviContribution):
         """Apply a Contribution to this Membership and extend the expiration date."""
@@ -23,8 +23,10 @@ class CiviMembership(CiviCRMBase):
         # If the new expiration date is in the future, change the status to "Current".
         status = "2" if end > datetime.now() else self.status_id
         cid = contribution.id
-        CiviMembershipPayment.create(contribution_id=cid, membership_id=self.id)
-        self.update(end_date=end.strftime("%Y-%m-%d"), status_id=status)
+        CiviMembershipPayment({"contribution_id": cid, "membership_id": self.id}).save()
+        self.end_date = end.strftime("%Y-%m-%d")
+        self.status_id = status
+        self.save()
 
     def set_status(self, status_id: int | None = None, status: str | None = None, is_override: bool = False):
         if status_id is not None and status is not None:

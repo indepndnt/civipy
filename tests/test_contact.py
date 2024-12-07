@@ -9,15 +9,13 @@ def test_get_with_existing():
 
 
 def test_get_no_match():
-    contact_info = CiviContact.action("get", email="unknown@example.com")
-
-    assert isinstance(contact_info, dict)
-    assert contact_info["count"] == 0
-    assert len(contact_info["values"]) == 0
+    contact = CiviContact.objects.get(email="unknown@example.com")
+    assert contact is None
 
 
 def test_find_with_existing():
-    contact = CiviContact.find(email="validunique@example.com")
+    result = CiviContact.objects.filter(email="validunique@example.com").all()
+    contact = result[0] if result else None
 
     assert isinstance(contact, CiviContact)
     assert contact.display_name == "Valid Unique"
@@ -45,7 +43,9 @@ def test_find_with_existing():
 
 
 def test_find_and_update_with_existing():
-    contact = CiviContact.find_and_update(where={"email": "validunique@example.com"}, display_name="Updated Name")
+    contact = CiviContact.objects.get(email="validunique@example.com")
+    contact.display_name = "Updated Name"
+    contact.save()
 
     assert isinstance(contact, CiviContact)
     assert contact.display_name == "Updated Name"
@@ -55,19 +55,22 @@ def test_find_and_update_with_existing():
 
 
 def test_find_no_match():
-    contact = CiviContact.find(email="unknown@example.com")
+    result = CiviContact.objects.filter(email="unknown@example.com").all()
+    contact = result[0] if result else None
 
     assert contact is None
 
 
 def test_find_all_no_match():
-    contact = CiviContact.find_all(email="unknown@example.com")
+    contact = CiviContact.objects.filter(email="unknown@example.com").all()
 
     assert contact == []
 
 
 def test_find_or_create_with_existing():
-    contact = CiviContact.find_or_create(where={"email": "validunique@example.com"})
+    contacts = CiviContact.objects.filter(email="validunique@example.com").all()
+    contact = contacts[0] if contacts else CiviContact(email="validunique@example.com")
+    contact.save()
 
     assert isinstance(contact, CiviContact)
     assert contact.display_name == "Valid Unique"

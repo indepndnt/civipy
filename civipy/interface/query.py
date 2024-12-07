@@ -126,7 +126,8 @@ class Query(BaseQuery):
         return self._result_cache
 
     def get(self, **kwargs):
-        return self.filter(**kwargs)[0]
+        result = self.filter(**kwargs).all()
+        return result[0] if result else None
 
     def filter(self, **kwargs):
         query = self._chain()

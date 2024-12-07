@@ -2,6 +2,12 @@
 
 - Drop deprecated model methods
 
+### 0.0.6 December 7, 2024
+
+- Add merge function for Contacts
+- Update HTTP retry settings
+- Remove internal calls to deprecated functions
+
 ### 0.0.5 November 6, 2024
 
 - Fix release script

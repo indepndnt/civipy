@@ -7,7 +7,7 @@ class CiviCountry(CiviCRMBase):
 
     @classmethod
     def find_by_country_code(cls, country_code: str, select: list[str] | None = None):
-        return cls.find(select=select, iso_code=country_code)
+        return cls.objects.get(select=select, iso_code=country_code)
 
 
 class CiviStateProvince(CiviCRMBase):
@@ -50,10 +50,11 @@ class CiviAddress(CiviCRMBase):
                         logger.debug("Using cache for %s" % abbreviation)
                         state_province_id = cls.state_province_abbreviation_cache[country.civi_id][abbreviation]
                     else:
-                        state_province = CiviStateProvince.find(country_id=country.civi_id, abbreviation=abbreviation)
-                        state_province_id = state_province["id"]
+                        result = CiviStateProvince.objects.filter(country_id=country.civi_id, abbreviation=abbreviation).all()
+                        state_province_id = result[0]["id"]
                         cls.state_province_abbreviation_cache[country.civi_id][abbreviation] = state_province_id
                     kwargs["state_province_id"] = state_province_id
                 else:
                     kwargs["supplemental_address_3"] = abbreviation
-        return super().create(**kwargs)
+        address = cls(kwargs)
+        return address.save()

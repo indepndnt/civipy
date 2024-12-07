@@ -1,5 +1,4 @@
 from civipy.base.base import CiviCRMBase
-from civipy.base.base import get_unique
 from civipy.contact import CiviContact
 
 
@@ -9,21 +8,16 @@ class CiviContribution(CiviCRMBase):
     def complete_transaction(self, **kwargs):
         """Calls the CiviCRM API completetransaction action and returns parsed JSON on success."""
         kwargs["id"] = self.civi_id
-        response = self.action("completetransaction", **kwargs)
-        if not isinstance(response.get("values"), int):
-            value = get_unique(response)
-            return self.__class__(value)
-        else:
-            return response
+        return self.objects._interface().execute("completetransaction", "Contribution", kwargs)
 
     @classmethod
     def find_by_transaction_id(cls, trxn_id: str, select: list[str] | None = None):
         """Find a contribution by payment transaction ID"""
-        return cls.find(select=select, trxn_id=trxn_id)
+        return cls.objects.get(select=select, trxn_id=trxn_id)
 
     @classmethod
     def find_by_invoice_id(cls, invoice_id: str, select: list[str] | None = None):
-        return cls.find(select=select, invoice_id=invoice_id)
+        return cls.objects.get(select=select, invoice_id=invoice_id)
 
     @classmethod
     def find_by_donor(
@@ -35,7 +29,8 @@ class CiviContribution(CiviCRMBase):
     ):
         """Find a contribution by donor's display name, and optionally
         by amount and/or date received (yyyy-mm-dd)."""
-        contact = CiviContact.find(select=["contact_id"], display_name=display_name)
+        result = CiviContact.objects.filter(display_name=display_name).values("contact_id").all()
+        contact = result[0] if result else None
         return cls.find_by_donor_id(contact["contact_id"], total_amount, receive_date, select)
 
     @classmethod
@@ -53,7 +48,7 @@ class CiviContribution(CiviCRMBase):
             query["total_amount"] = total_amount
         if receive_date is not None:
             query["receive_date"] = {"BETWEEN": [receive_date, f"{receive_date} 23:59:59"]}
-        return cls.find(select=select, **query)
+        return cls.objects.get(select=select, **query)
 
 
 class CiviContributionRecur(CiviCRMBase):
@@ -64,4 +59,4 @@ class CiviContributionRecur(CiviCRMBase):
         """
         Find a recurring contribution by subscription transaction ID
         """
-        return cls.find(select=select, trxn_id=trxn_id)
+        return cls.objects.get(select=select, trxn_id=trxn_id)
